@@ -1,5 +1,6 @@
 // Resume de periode : un seul appel pour les jours anciens (spec 6.3, 7.4).
 
+import { providerConfig, chatHeaders, chatUrl } from "./provider.js";
 import { PeriodSummarySchema, extractJson, type PeriodSummary } from "./schema.js";
 import { costCents, envPricing, estimateTokens } from "./tokens.js";
 import { templatePeriod } from "./template.js";
@@ -39,7 +40,7 @@ function buildPeriodPrompt(i: WritePeriodInput): string {
 
 export async function writePeriod(i: WritePeriodInput): Promise<WritePeriodResult> {
   const enabled = (process.env["CHRONICLER_ENABLED"] ?? "true") !== "false";
-  const model = process.env["CHRONICLER_MODEL"] ?? "minimax/minimax-m3:free";
+  const cfg = providerConfig();
   const { priceInPerM, priceOutPerM } = envPricing();
   const prompt = buildPeriodPrompt(i);
   const tokensInEst = estimateTokens(prompt);
@@ -57,19 +58,13 @@ export async function writePeriod(i: WritePeriodInput): Promise<WritePeriodResul
     };
   }
   try {
-    const key = process.env["OPENROUTER_API_KEY"];
-    if (!key) throw new Error("missing OPENROUTER_API_KEY");
+    if (!cfg.apiKey) throw new Error(`missing api key (${cfg.name})`);
     const t0 = Date.now();
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const res = await fetch(chatUrl(cfg), {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://osrune.game",
-        "X-Title": "OSRune chronicler",
-      },
+      headers: chatHeaders(cfg),
       body: JSON.stringify({
-        model,
+        model: cfg.model,
         max_tokens: 400,
         temperature: 0.5,
         response_format: { type: "json_object" },
@@ -77,7 +72,7 @@ export async function writePeriod(i: WritePeriodInput): Promise<WritePeriodResul
       }),
     });
     const ms = Date.now() - t0;
-    if (!res.ok) throw new Error(`openrouter ${res.status}`);
+    if (!res.ok) throw new Error(`${cfg.name} ${res.status}`);
     const json = (await res.json()) as {
       choices?: { message?: { content?: string } }[];
       usage?: { prompt_tokens?: number; completion_tokens?: number };
@@ -89,7 +84,7 @@ export async function writePeriod(i: WritePeriodInput): Promise<WritePeriodResul
     return {
       output: parsed,
       source: "model",
-      modelId: model,
+      modelId: cfg.model,
       tokensIn: inT,
       tokensOut: outT,
       costCents: costCents({ tokensIn: inT, tokensOut: outT, priceInPerM, priceOutPerM }),

@@ -1,6 +1,8 @@
-// Client OpenRouter : 1 appel/jour, retry unique avec erreur Zod, gabarit sinon (spec 7.3).
+// Client modele du chroniqueur : 1 appel/jour, retry unique avec erreur Zod, gabarit sinon.
+// Spec 7.3. Fournisseur configurable (OpenRouter par defaut, OpenCode Zen via env).
 // response_format json_object impose pour viser >=95% de JSON valide au 1er essai.
 
+import { providerConfig, chatHeaders, chatUrl, type ProviderConfig } from "./provider.js";
 import { ChronicleOutputSchema, extractJson, type ChronicleOutput } from "./schema.js";
 import { costCents, envPricing, estimateTokens } from "./tokens.js";
 import { templateChronicle } from "./template.js";
@@ -29,18 +31,17 @@ function env(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
 }
 
-async function callModel(prompt: string, model: string, maxTokens: number): Promise<{ text: string; inT: number; outT: number; ms: number }> {
-  const key = process.env["OPENROUTER_API_KEY"];
-  if (!key) throw new Error("missing OPENROUTER_API_KEY");
+async function callModel(
+  cfg: ProviderConfig,
+  prompt: string,
+  model: string,
+  maxTokens: number,
+): Promise<{ text: string; inT: number; outT: number; ms: number }> {
+  if (!cfg.apiKey) throw new Error(`missing api key (${cfg.name})`);
   const t0 = Date.now();
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+  const res = await fetch(chatUrl(cfg), {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://osrune.game",
-      "X-Title": "OSRune chronicler",
-    },
+    headers: chatHeaders(cfg),
     body: JSON.stringify({
       model,
       max_tokens: maxTokens,
@@ -50,7 +51,7 @@ async function callModel(prompt: string, model: string, maxTokens: number): Prom
     }),
   });
   const ms = Date.now() - t0;
-  if (!res.ok) throw new Error(`openrouter ${res.status}`);
+  if (!res.ok) throw new Error(`${cfg.name} ${res.status}`);
   const json = (await res.json()) as {
     choices?: { message?: { content?: string } }[];
     usage?: { prompt_tokens?: number; completion_tokens?: number };
@@ -76,8 +77,8 @@ function validateNames(o: ChronicleOutput, figureNames: string[]): string | null
 
 export async function writeDay(i: WriteDayInput): Promise<WriteDayResult> {
   const enabled = env("CHRONICLER_ENABLED", "true") !== "false";
-  const model = env("CHRONICLER_MODEL", "minimax/minimax-m3:free");
-  const fallback = env("CHRONICLER_MODEL_FALLBACK", "z-ai/glm-5.2:free");
+  const cfg = providerConfig();
+  const { model, fallback } = cfg;
   const { priceInPerM, priceOutPerM } = envPricing();
   const tokensInEst = estimateTokens(i.prompt);
 
@@ -98,7 +99,7 @@ export async function writeDay(i: WriteDayInput): Promise<WriteDayResult> {
   let lastErr = "";
   for (const m of models) {
     try {
-      const r1 = await callModel(i.prompt, m, 600);
+      const r1 = await callModel(cfg, i.prompt, m, 600);
       try {
         const parsed = ChronicleOutputSchema.parse(extractJson(r1.text));
         const nameErr = validateNames(parsed, i.figureNames);
@@ -116,7 +117,7 @@ export async function writeDay(i: WriteDayInput): Promise<WriteDayResult> {
       } catch (zErr) {
         lastErr = String(zErr);
         // Second appel : corrige uniquement le JSON (spec 7.3)
-        const fix = await callModel(`${i.prompt}\n\nTon JSON precedent etait invalide : ${lastErr.slice(0, 400)}. Corrige uniquement le JSON.`, m, 600);
+        const fix = await callModel(cfg, `${i.prompt}\n\nTon JSON precedent etait invalide : ${lastErr.slice(0, 400)}. Corrige uniquement le JSON.`, m, 600);
         const parsed = ChronicleOutputSchema.parse(extractJson(fix.text));
         const nameErr = validateNames(parsed, i.figureNames);
         if (nameErr) throw new Error(nameErr);

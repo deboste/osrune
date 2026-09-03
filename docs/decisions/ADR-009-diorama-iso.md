@@ -15,7 +15,7 @@ Decision : diorama isometrique 100 % procedural, style flat HD coherent
   raye + brasier, chantier qui pousse avec le %, epouvantail), fumee de cheminee.
 - Villageois modules (tunique de metier, cheveux, outils), marche/travail/parole/sommeil,
   etiquettes des figures, bulles de repliques, fiche au clic (lecture seule, spec 8).
-- Ciel (collines, nuages, etoiles), cycle jour/nuit sur l'heure reelle, Use the traffic lights.
+- Ciel (collines, nuages, etoiles), cycle jour/nuit sur l'heure reelle,
   lucioles, oiseaux, ombres portees, vignettage. `prefers-reduced-motion` respecte.
 - Moteur `@osrune/engine` en presentation dans le navigateur (vie ambiante, rien persiste).
 - Film du jour : camera sur les lieux de la chronique + cartons (bouton de la demo).

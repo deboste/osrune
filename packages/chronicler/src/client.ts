@@ -16,6 +16,8 @@ export interface WriteDayInput {
 export interface WriteDayResult {
   output: ChronicleOutput;
   source: "model" | "template";
+  /** true si le second appel de correction a ete necessaire (mesure du critere 95 %). */
+  retried: boolean;
   modelId: string;
   tokensIn: number;
   tokensOut: number;
@@ -74,8 +76,8 @@ function validateNames(o: ChronicleOutput, figureNames: string[]): string | null
 
 export async function writeDay(i: WriteDayInput): Promise<WriteDayResult> {
   const enabled = env("CHRONICLER_ENABLED", "true") !== "false";
-  const model = env("CHRONICLER_MODEL", "deepseek/deepseek-chat-v3-0324");
-  const fallback = env("CHRONICLER_MODEL_FALLBACK", "qwen/qwen3-32b");
+  const model = env("CHRONICLER_MODEL", "minimax/minimax-m3:free");
+  const fallback = env("CHRONICLER_MODEL_FALLBACK", "z-ai/glm-5.2:free");
   const { priceInPerM, priceOutPerM } = envPricing();
   const tokensInEst = estimateTokens(i.prompt);
 
@@ -83,6 +85,7 @@ export async function writeDay(i: WriteDayInput): Promise<WriteDayResult> {
     return {
       output: templateChronicle(i.day, i.condensed, "fire", i.figureNames),
       source: "template",
+      retried: false,
       modelId: "template",
       tokensIn: tokensInEst,
       tokensOut: 180,
@@ -93,7 +96,7 @@ export async function writeDay(i: WriteDayInput): Promise<WriteDayResult> {
 
   const models = [model, fallback];
   let lastErr = "";
-  for (const m of models.slice(0, 1)) {
+  for (const m of models) {
     try {
       const r1 = await callModel(i.prompt, m, 600);
       try {
@@ -103,6 +106,7 @@ export async function writeDay(i: WriteDayInput): Promise<WriteDayResult> {
         return {
           output: parsed,
           source: "model",
+          retried: false,
           modelId: m,
           tokensIn: r1.inT,
           tokensOut: r1.outT,
@@ -119,6 +123,7 @@ export async function writeDay(i: WriteDayInput): Promise<WriteDayResult> {
         return {
           output: parsed,
           source: "model",
+          retried: true,
           modelId: m,
           tokensIn: fix.inT,
           tokensOut: fix.outT,
@@ -128,12 +133,14 @@ export async function writeDay(i: WriteDayInput): Promise<WriteDayResult> {
       }
     } catch (e) {
       lastErr = String(e);
+      continue; // modele suivant (fallback), puis gabarit
     }
   }
   void lastErr;
   return {
     output: templateChronicle(i.day, i.condensed, "fire", i.figureNames),
     source: "template",
+    retried: false,
     modelId: "template",
     tokensIn: tokensInEst,
     tokensOut: 180,

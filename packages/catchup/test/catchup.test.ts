@@ -19,6 +19,7 @@ function mockDay(calls: { n: number }, delayMs = 0) {
     return {
       output: templateChronicle(i.day, i.condensed, "fire", i.figureNames),
       source: "model",
+      retried: false,
       modelId: "mock",
       tokensIn: 1500,
       tokensOut: 350,

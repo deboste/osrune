@@ -39,7 +39,7 @@ function buildPeriodPrompt(i: WritePeriodInput): string {
 
 export async function writePeriod(i: WritePeriodInput): Promise<WritePeriodResult> {
   const enabled = (process.env["CHRONICLER_ENABLED"] ?? "true") !== "false";
-  const model = process.env["CHRONICLER_MODEL"] ?? "deepseek/deepseek-chat-v3-0324";
+  const model = process.env["CHRONICLER_MODEL"] ?? "minimax/minimax-m3:free";
   const { priceInPerM, priceOutPerM } = envPricing();
   const prompt = buildPeriodPrompt(i);
   const tokensInEst = estimateTokens(prompt);

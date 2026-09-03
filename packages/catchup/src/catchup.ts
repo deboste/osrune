@@ -259,6 +259,7 @@ export async function runCatchup(
         res = {
           output: templateChronicle(dayNum, condensed, "fire", figs.map((f) => f.name)),
           source: "template",
+          retried: false,
           modelId: "template",
           tokensIn: estIn,
           tokensOut: 180,
@@ -538,6 +539,7 @@ export async function advanceOneDay(
     res = {
       output: templateChronicle(dayNum, condensed, "fire", figs.map((f) => f.name)),
       source: "template",
+      retried: false,
       modelId: "template",
       tokensIn: estimateTokens(prompt),
       tokensOut: 180,

@@ -66,7 +66,7 @@ export function templateFigures(seed: number): FigureDraft[] {
 
 export async function createFigures(i: CreateFiguresInput): Promise<{ figures: FigureDraft[]; source: "model" | "template" }> {
   const enabled = (process.env["CHRONICLER_ENABLED"] ?? "true") !== "false";
-  const model = process.env["CHRONICLER_MODEL"] ?? "deepseek/deepseek-chat-v3-0324";
+  const model = process.env["CHRONICLER_MODEL"] ?? "minimax/minimax-m3:free";
   if (i.offline || !enabled || !process.env["OPENROUTER_API_KEY"]) {
     return { figures: templateFigures(i.seed), source: "template" };
   }

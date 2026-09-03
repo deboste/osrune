@@ -1,11 +1,15 @@
-# ADR-004 : modele chroniqueur par defaut (sept. 2026)
+# ADR-004 (addendum 2026-09-03) : gratuit reel, Minimax d'abord
 
-Date : 2026-09-03. Statut : accepte, a revalider chaque trimestre.
+Mesure sur 50 jours simules, cle OpenRouter du proprietaire :
+- `z-ai/glm-5.2:free` : 429 systematique cote fournisseur pendant tout le test (0 appel abouti).
+  Inutilisable en primaire aujourd'hui. Garde en fallback (gratuit, peut revenir).
+- `minimax/minimax-m3:free` : 41/50 jours servis, francais de bonne qualite, ~1,4 s mediane,
+  1 240 in / 410 out (sous les plafonds 2 500/500), cout 0, cache de prefixe actif.
+  Premier essai valide : 29/41 (~71 %). Second appel corrige 12/41. 9/50 en gabarit (429 en rafale).
+- `writePeriod` et `createFigures` : meme comportement (gabarit en cas de 429).
 
-Contexte : la spec demande de verifier prix/dispo au moment du choix, pas de se fier au document.
-
-Releve du jour (OpenRouter, USD/M tokens) : les prix 2026 sont bien plus bas que l'annexe B. DeepSeek V3 tourne autour de 0,05-0,07 in / 0,10-0,28 out selon routeur ; Qwen3-32B autour de 0,06-0,10 in ; les flagships (Kimi K3, Qwen Max, GLM-5) sont 10 a 50x plus chers et injustifies pour 400 tokens de conte calibre.
-
-Decision : `CHRONICLER_MODEL=deepseek/deepseek-chat-v3-0324`, `CHRONICLER_MODEL_FALLBACK=qwen/qwen3-32b`, `response_format json_object` impose, `max_tokens 600`. Table de prix locale dans `.env` (`PRICE_IN_PER_M=0.07`, `PRICE_OUT_PER_M=0.28`) : estimation ~0,03 ct/jour, sous la cible 0,5 ct.
-
-Consequence : le critere "95% JSON valide au 1er essai sur 50 jours" se mesure avec cles reelles en Phase 0 (script `sim` loge source/tokens). Si DeepSeek decroche en francais, basculer sur Qwen3-32B en une ligne.
+Decision : primaire `minimax/minimax-m3:free`, fallback `z-ai/glm-5.2:free`, cout facture 0.
+Le critere spec "95 % JSON valide au premier essai" n'est PAS tenu en gratuit (71 % mesure).
+Le produit reste sain : 82 % de chroniques modele, 18 % de gabarit (teste, correct).
+Option si on veut 95 % : `minimax/minimax-m3` payant (~0,30 $/M in, ~0,05 ct/jour, 300x sous
+le plafond gratuit) puis re-mesure. A trancher avec le proprietaire (depenser < 1 ct de test).

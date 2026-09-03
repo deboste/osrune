@@ -6,3 +6,7 @@ export { templateChronicle, templatePeriod } from "./template.js";
 export { estimateTokens, costCents, envPricing } from "./tokens.js";
 export { writeDay } from "./client.js";
 export type { WriteDayInput, WriteDayResult } from "./client.js";
+export { writePeriod } from "./period.js";
+export type { WritePeriodInput, WritePeriodResult } from "./period.js";
+export { createFigures, templateFigures, CreateFiguresSchema } from "./figures.js";
+export type { FigureDraft, CreateFiguresInput } from "./figures.js";

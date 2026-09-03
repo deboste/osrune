@@ -17,9 +17,10 @@ Spec : `docs/spec.md` (v0.1). Maquette visuelle `maquette-civilisation-agents-v3
 - `packages/chronicler` : prompts, schema Zod, client OpenRouter (`response_format json_object`, 1 retry), gabarit offline, tokens/couts.
 - `packages/content` : donnees par age (`fire` livre, `steam/orbital/oblivion` verrouilles mais types).
 - `packages/shared` : schemas Zod (source unique), constantes.
-- `packages/db` : Phase 1 (schema Drizzle + migrations, a venir).
+- `packages/db` : Phase 1 (schema Drizzle + migrations, RLS).
+- `packages/catchup` : Phase 1 (rattrapage, budgets, decisions, ajouts).
 - `apps/cli` : `osrune sim --days 30 --seed 42 [--offline]`.
-- `apps/web` : Phase 2 (Next.js + canvas, a venir).
+- `apps/web` : Phase 1 (API REST, spec 10), front en Phase 2.
 
 ## Phase 0 : moteur en texte pur
 

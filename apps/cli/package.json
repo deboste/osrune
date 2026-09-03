@@ -1,0 +1,25 @@
+{
+  "name": "@osrune/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "osrune": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@osrune/chronicler": "workspace:*",
+    "@osrune/content": "workspace:*",
+    "@osrune/engine": "workspace:*",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

@@ -3,7 +3,8 @@
 
 import { z } from "zod";
 import { content } from "@osrune/content";
-import { providerConfig, chatHeaders, chatUrl } from "./provider.js";
+import { providerConfig } from "./provider.js";
+import { requestText } from "./transport.js";
 import { extractJson } from "./schema.js";
 import { estimateTokens } from "./tokens.js";
 
@@ -80,20 +81,8 @@ export async function createFigures(i: CreateFiguresInput): Promise<{ figures: F
       `{"figures": [{"name": "prenom", "gender": "f|m", "ageYears": 30, "role": "metier", "traits": ["a", "b", "c"], "goal": "objectif en une phrase"} x 5]}`,
     ].join("\n");
     void estimateTokens;
-    const res = await fetch(chatUrl(cfg), {
-      method: "POST",
-      headers: chatHeaders(cfg),
-      body: JSON.stringify({
-        model: cfg.model,
-        max_tokens: 600,
-        temperature: 0.8,
-        response_format: { type: "json_object" },
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-    if (!res.ok) throw new Error(`${cfg.name} ${res.status}`);
-    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-    const parsed = CreateFiguresSchema.parse(extractJson(json.choices?.[0]?.message?.content ?? ""));
+    const r = await requestText(cfg, cfg.model, { prompt, maxTokens: 600, temperature: 0.8 });
+    const parsed = CreateFiguresSchema.parse(extractJson(r.text));
     return { figures: [...parsed.figures], source: "model" };
   } catch {
     return { figures: templateFigures(i.seed), source: "template" };

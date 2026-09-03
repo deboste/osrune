@@ -2,7 +2,8 @@
 // Spec 7.3. Fournisseur configurable (OpenRouter par defaut, OpenCode Zen via env).
 // response_format json_object impose pour viser >=95% de JSON valide au 1er essai.
 
-import { providerConfig, chatHeaders, chatUrl, type ProviderConfig } from "./provider.js";
+import { providerConfig } from "./provider.js";
+import { requestText } from "./transport.js";
 import { ChronicleOutputSchema, extractJson, type ChronicleOutput } from "./schema.js";
 import { costCents, envPricing, estimateTokens } from "./tokens.js";
 import { templateChronicle } from "./template.js";
@@ -31,37 +32,6 @@ function env(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
 }
 
-async function callModel(
-  cfg: ProviderConfig,
-  prompt: string,
-  model: string,
-  maxTokens: number,
-): Promise<{ text: string; inT: number; outT: number; ms: number }> {
-  if (!cfg.apiKey) throw new Error(`missing api key (${cfg.name})`);
-  const t0 = Date.now();
-  const res = await fetch(chatUrl(cfg), {
-    method: "POST",
-    headers: chatHeaders(cfg),
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      temperature: 0.7,
-      response_format: { type: "json_object" },
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-  const ms = Date.now() - t0;
-  if (!res.ok) throw new Error(`${cfg.name} ${res.status}`);
-  const json = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
-    usage?: { prompt_tokens?: number; completion_tokens?: number };
-  };
-  const text = json.choices?.[0]?.message?.content ?? "";
-  const inT = json.usage?.prompt_tokens ?? estimateTokens(prompt);
-  const outT = json.usage?.completion_tokens ?? estimateTokens(text);
-  return { text, inT, outT, ms };
-}
-
 function validateNames(o: ChronicleOutput, figureNames: string[]): string | null {
   const known = new Set(figureNames);
   for (const e of o.chronique) {
@@ -77,8 +47,8 @@ function validateNames(o: ChronicleOutput, figureNames: string[]): string | null
 
 export async function writeDay(i: WriteDayInput): Promise<WriteDayResult> {
   const enabled = env("CHRONICLER_ENABLED", "true") !== "false";
-  const cfg = providerConfig();
-  const { model, fallback } = cfg;
+  const primary = providerConfig("primary");
+  const fallbackCfg = providerConfig("fallback");
   const { priceInPerM, priceOutPerM } = envPricing();
   const tokensInEst = estimateTokens(i.prompt);
 
@@ -95,11 +65,14 @@ export async function writeDay(i: WriteDayInput): Promise<WriteDayResult> {
     };
   }
 
-  const models = [model, fallback];
+  const slots = [
+    { cfg: primary, model: primary.model },
+    { cfg: fallbackCfg, model: fallbackCfg.model },
+  ];
   let lastErr = "";
-  for (const m of models) {
+  for (const { cfg, model: m } of slots) {
     try {
-      const r1 = await callModel(cfg, i.prompt, m, 600);
+      const r1 = await requestText(cfg, m, { prompt: i.prompt, maxTokens: 600, temperature: 0.7 });
       try {
         const parsed = ChronicleOutputSchema.parse(extractJson(r1.text));
         const nameErr = validateNames(parsed, i.figureNames);
@@ -117,7 +90,11 @@ export async function writeDay(i: WriteDayInput): Promise<WriteDayResult> {
       } catch (zErr) {
         lastErr = String(zErr);
         // Second appel : corrige uniquement le JSON (spec 7.3)
-        const fix = await callModel(cfg, `${i.prompt}\n\nTon JSON precedent etait invalide : ${lastErr.slice(0, 400)}. Corrige uniquement le JSON.`, m, 600);
+        const fix = await requestText(cfg, m, {
+          prompt: `${i.prompt}\n\nTon JSON precedent etait invalide : ${lastErr.slice(0, 400)}. Corrige uniquement le JSON.`,
+          maxTokens: 600,
+          temperature: 0.7,
+        });
         const parsed = ChronicleOutputSchema.parse(extractJson(fix.text));
         const nameErr = validateNames(parsed, i.figureNames);
         if (nameErr) throw new Error(nameErr);

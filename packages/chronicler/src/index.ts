@@ -1,5 +1,7 @@
 export { providerConfig, chatUrl, chatHeaders } from "./provider.js";
 export type { ProviderConfig } from "./provider.js";
+export { apiFor, responsesUrl, requestText, extractResponsesText } from "./transport.js";
+export type { ApiKind, TextResult } from "./transport.js";
 export { ChronicleOutputSchema, PeriodSummarySchema, extractJson, LIEUX } from "./schema.js";
 export type { ChronicleOutput, PeriodSummary } from "./schema.js";
 export { buildPrompt, buildStablePrompt, buildVariablePrompt } from "./prompt.js";

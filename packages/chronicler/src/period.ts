@@ -1,6 +1,7 @@
 // Resume de periode : un seul appel pour les jours anciens (spec 6.3, 7.4).
 
-import { providerConfig, chatHeaders, chatUrl } from "./provider.js";
+import { providerConfig } from "./provider.js";
+import { requestText } from "./transport.js";
 import { PeriodSummarySchema, extractJson, type PeriodSummary } from "./schema.js";
 import { costCents, envPricing, estimateTokens } from "./tokens.js";
 import { templatePeriod } from "./template.js";
@@ -59,36 +60,16 @@ export async function writePeriod(i: WritePeriodInput): Promise<WritePeriodResul
   }
   try {
     if (!cfg.apiKey) throw new Error(`missing api key (${cfg.name})`);
-    const t0 = Date.now();
-    const res = await fetch(chatUrl(cfg), {
-      method: "POST",
-      headers: chatHeaders(cfg),
-      body: JSON.stringify({
-        model: cfg.model,
-        max_tokens: 400,
-        temperature: 0.5,
-        response_format: { type: "json_object" },
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-    const ms = Date.now() - t0;
-    if (!res.ok) throw new Error(`${cfg.name} ${res.status}`);
-    const json = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-      usage?: { prompt_tokens?: number; completion_tokens?: number };
-    };
-    const text = json.choices?.[0]?.message?.content ?? "";
-    const inT = json.usage?.prompt_tokens ?? tokensInEst;
-    const outT = json.usage?.completion_tokens ?? estimateTokens(text);
-    const parsed = PeriodSummarySchema.parse(extractJson(text));
+    const r = await requestText(cfg, cfg.model, { prompt, maxTokens: 400, temperature: 0.5 });
+    const parsed = PeriodSummarySchema.parse(extractJson(r.text));
     return {
       output: parsed,
       source: "model",
       modelId: cfg.model,
-      tokensIn: inT,
-      tokensOut: outT,
-      costCents: costCents({ tokensIn: inT, tokensOut: outT, priceInPerM, priceOutPerM }),
-      latencyMs: ms,
+      tokensIn: r.inT,
+      tokensOut: r.outT,
+      costCents: costCents({ tokensIn: r.inT, tokensOut: r.outT, priceInPerM, priceOutPerM }),
+      latencyMs: r.ms,
     };
   } catch {
     return {

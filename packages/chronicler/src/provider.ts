@@ -1,33 +1,36 @@
 // Fournisseur du chroniqueur : OpenRouter (defaut, spec 3.2) ou OpenCode Zen.
-// Meme contrat OpenAI-compatible (/chat/completions), seule la base URL, la cle
-// et les ids de modeles changent. Tout se configure par variables d'environnement.
+// Chaque slot (primaire, fallback) a SON fournisseur et SON modele : on peut donc
+// chainer Zen puis OpenRouter (deux quotas gratuits independants).
+// Variables : CHRONICLER_PROVIDER / CHRONICLER_FALLBACK_PROVIDER (openrouter|zen),
+// CHRONICLER_MODEL / CHRONICLER_MODEL_FALLBACK, CHRONICLER_BASE_URL,
+// OPENROUTER_API_KEY, ZEN_API_KEY (ou OPENCODE_ZEN_API_KEY), CHRONICLER_API (chat|responses).
 
 export interface ProviderConfig {
   name: "openrouter" | "zen";
   baseUrl: string;
   apiKey: string;
   model: string;
-  fallback: string;
 }
 
-export function providerConfig(): ProviderConfig {
-  const name = (process.env["CHRONICLER_PROVIDER"] ?? "openrouter") === "zen" ? "zen" : "openrouter";
+export function providerConfig(which: "primary" | "fallback" = "primary"): ProviderConfig {
+  const providerEnv = which === "fallback" ? process.env["CHRONICLER_FALLBACK_PROVIDER"] : undefined;
+  const name = (providerEnv ?? process.env["CHRONICLER_PROVIDER"] ?? "openrouter") === "zen" ? "zen" : "openrouter";
+  const modelEnv = which === "fallback" ? "CHRONICLER_MODEL_FALLBACK" : "CHRONICLER_MODEL";
   if (name === "zen") {
     return {
       name,
       baseUrl: process.env["CHRONICLER_BASE_URL"] ?? "https://opencode.ai/zen/v1",
       apiKey: process.env["ZEN_API_KEY"] ?? process.env["OPENCODE_ZEN_API_KEY"] ?? "",
-      // Modeles gratuits, endpoint /chat/completions (pas /responses).
-      model: process.env["CHRONICLER_MODEL"] ?? "mimo-v2.5-free",
-      fallback: process.env["CHRONICLER_MODEL_FALLBACK"] ?? "big-pickle",
+      // Gratuits : Muse Spark passe par /responses (transport devine par prefixe).
+      model:
+        process.env[modelEnv] ?? (which === "fallback" ? "big-pickle" : "muse-spark-1.3-contributor-free"),
     };
   }
   return {
     name,
     baseUrl: "https://openrouter.ai/api/v1",
     apiKey: process.env["OPENROUTER_API_KEY"] ?? "",
-    model: process.env["CHRONICLER_MODEL"] ?? "minimax/minimax-m3:free",
-    fallback: process.env["CHRONICLER_MODEL_FALLBACK"] ?? "z-ai/glm-5.2:free",
+    model: process.env[modelEnv] ?? (which === "fallback" ? "z-ai/glm-5.2:free" : "minimax/minimax-m3:free"),
   };
 }
 

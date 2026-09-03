@@ -69,7 +69,11 @@ export async function worldView(db: Db, worldId: string, userId: string): Promis
     figures: chars
       .filter((c) => c.kind === "figure")
       .map((c) => ({ id: c.id, name: c.name, role: c.role, traits: c.traits, goal: c.goal, quote: c.quote, memory: c.memory })),
-    recentDays: withChronicle.slice(-3).map((l) => ({ day: l.day, chronicle: l.chronicle, decision: l.decision, source: l.source })),
+    recentDays: withChronicle.slice(-3).map((l) => {
+      const raw = l.chronicle;
+      const chronicle = Array.isArray(raw) ? { chronique: raw } : raw;
+      return { day: l.day, chronicle, decision: l.decision, source: l.source };
+    }),
     pendingDecision: pending ? { day: pending.day, decision: pending.decision } : null,
     period,
     usage: {

@@ -107,6 +107,19 @@ export type Relation = z.infer<typeof RelationSchema>;
 export type Effect = z.infer<typeof EffectSchema>;
 export type RawEvent = z.infer<typeof RawEventSchema>;
 
+// --- Chroniques : colonne day_logs.chronicle -------------------------------
+// Nouveau format : objet {chronique: [...], period?}. Ancien : tableau brut.
+export interface ChronicleEntryLite {
+  texte: string;
+  lieu: string;
+}
+
+export function normChronicle(c: unknown): ChronicleEntryLite[] {
+  if (Array.isArray(c)) return c as ChronicleEntryLite[];
+  const o = c as { chronique?: ChronicleEntryLite[] } | null;
+  return o?.chronique ?? [];
+}
+
 // --- Utilitaire seed (spec 12 : deterministe) ---
 export function hashSeed(seed: number): number {
   let h = seed >>> 0;

@@ -22,6 +22,11 @@ import { dayLogs, worlds, playerActions, type Db, type World } from "@osrune/db"
 import { condenseLog, createWorld, queueEffects, runDay, type Effect, type WorldState } from "@osrune/engine";
 import { insertDayLog, resetMonthIfNeeded, rowToState, stateToJson, syncCharacters } from "./store.js";
 
+
+/** Normalise la colonne chronicle (source : shared, re-export back-compat). */
+import { normChronicle } from "@osrune/shared";
+export { normChronicle };
+
 export class HttpError extends Error {
   status: number;
   code: string;
@@ -181,8 +186,8 @@ export async function runCatchup(
       .reverse()
       .filter((d) => d.chronicle)
       .map((d) => {
-        const c = d.chronicle as { chronique?: { texte: string }[] } | null;
-        return `Jour ${d.day} : ${(c?.chronique ?? []).map((e) => e.texte).join(" ")}`;
+        const c = normChronicle(d.chronicle);
+        return `Jour ${d.day} : ${c.map((e) => e.texte).join(" ")}`;
       });
 
     const oldDays: { day: number; lines: string[] }[] = [];
@@ -291,7 +296,7 @@ export async function runCatchup(
         day: dayNum,
         rawEvents: state.log.slice(-50),
         condensed: condensed.join("\n"),
-        chronicle: res.output.chronique,
+        chronicle: { chronique: res.output.chronique },
         decision: res.output.decision,
         source: res.source,
         modelId: res.modelId,
@@ -339,10 +344,11 @@ export async function runCatchup(
           .from(dayLogs)
           .where(and(eq(dayLogs.worldId, row.id), eq(dayLogs.day, firstDetailed.day)))
           .limit(1);
-        const cur = existing[0]?.chronicle as Record<string, unknown> | null;
+        const prev = (existing[0]?.chronicle ?? {}) as Record<string, unknown>;
+        const base = Array.isArray(prev) ? { chronique: prev } : prev;
         await db
           .update(dayLogs)
-          .set({ chronicle: { ...(cur ?? {}), period: { from, to, resume: periodSummary } } })
+          .set({ chronicle: { ...base, period: { from, to, resume: periodSummary } } })
           .where(and(eq(dayLogs.worldId, row.id), eq(dayLogs.day, firstDetailed.day)));
       }
     }
@@ -552,7 +558,7 @@ export async function advanceOneDay(
     day: dayNum,
     rawEvents: state.log.slice(-50),
     condensed: condensed.join("\n"),
-    chronicle: res.output.chronique,
+    chronicle: { chronique: res.output.chronique },
     decision: res.output.decision,
     source: res.source,
     modelId: res.modelId,
@@ -561,6 +567,15 @@ export async function advanceOneDay(
     costCents: res.costCents,
     latencyMs: res.latencyMs,
   });
+  for (const f of figs) {
+    const q = res.output.repliques[f.name];
+    if (q) f.quote = String(q).slice(0, 60);
+    const m = res.output.memoires[f.name];
+    if (m) {
+      f.memory.facts.push(String(m).slice(0, 160));
+      if (f.memory.facts.length > 10) f.memory.facts.shift();
+    }
+  }
   const last = row.lastSimulatedAt ?? now;
   await db
     .update(worlds)

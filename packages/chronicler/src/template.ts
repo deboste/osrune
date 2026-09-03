@@ -12,7 +12,7 @@ export function templateChronicle(day: number, condensed: string[], ageId: AgeId
   const entries: ChronicleOutput["chronique"] = [];
 
   if (talks[0]) {
-    entries.push({ texte: `Au village, ${talks[0].replace(/\.$/, "").toLowerCase()}. Les voix portent jusqu'au soir.`, alerte: false, lieu: "market", acteurs: [] });
+    entries.push({ texte: `${talks[0]} Les voix portent jusqu'au soir.`, alerte: false, lieu: "market", acteurs: [] });
   }
   if (site[0]) {
     entries.push({ texte: `${site[0]} Les bras ne manquent pas et le bois sent bon.`, alerte: false, lieu: "site", acteurs: [] });

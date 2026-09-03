@@ -50,6 +50,9 @@ importers:
       '@osrune/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@osrune/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@supabase/supabase-js':
         specifier: ^2.45.0
         version: 2.114.0

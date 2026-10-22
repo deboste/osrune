@@ -71,7 +71,7 @@ export const RawEventSchema = z.object({
   type: z.string().max(32),
   actors: z.array(z.string().max(40)).max(6),
   place: z.string().max(24),
-  data: z.record(z.unknown()).optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const WorldStateSchema = z.object({

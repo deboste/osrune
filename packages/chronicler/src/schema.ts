@@ -32,15 +32,15 @@ export const ChronicleOutputSchema = z.object({
     texte: z.string().min(10).max(280),
     options: z.tuple([DecisionOptionSchema, DecisionOptionSchema, DecisionOptionSchema]),
   }),
-  repliques: z.record(z.string().max(160)).default({}),
-  memoires: z.record(z.string().max(160)).default({}),
+  repliques: z.record(z.string(), z.string().max(160)).default({}),
+  memoires: z.record(z.string(), z.string().max(160)).default({}),
 });
 
 export type ChronicleOutput = z.infer<typeof ChronicleOutputSchema>;
 
 export const PeriodSummarySchema = z.object({
   resume: z.string().min(20).max(900),
-  memoires: z.record(z.string().max(160)).default({}),
+  memoires: z.record(z.string(), z.string().max(160)).default({}),
 });
 
 export type PeriodSummary = z.infer<typeof PeriodSummarySchema>;
